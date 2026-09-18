@@ -1,0 +1,15 @@
+{% if job.status == "failed" %}
+  <div class="alert" role="alert"><strong>Scan failed.</strong> {{ job.error }}</div>
+  <p><a class="btn btn-ghost" href="/">Try another domain</a></p>
+{% else %}
+  <div class="track" role="progressbar" aria-valuenow="{{ job.percent }}"
+       aria-valuemin="0" aria-valuemax="100">
+    <div class="track-fill" style="width: {{ job.percent }}%"></div>
+  </div>
+  <p class="step">{{ job.step }}</p>
+  {% if job.log %}
+  <ol class="steplog">
+    {% for entry in job.log %}<li>{{ entry }}</li>{% endfor %}
+  </ol>
+  {% endif %}
+{% endif %}

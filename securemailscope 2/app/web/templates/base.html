@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}SecureMailScope{% endblock %}</title>
+  <meta name="description" content="Passive email security posture assessment: SPF, DKIM, DMARC, MTA-STS and transport security for any domain.">
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='3' fill='%2314323f'/><path d='M3.5 5.5h9v5.5h-9z' fill='none' stroke='white' stroke-width='1.2'/><path d='M3.5 5.5 8 9l4.5-3.5' fill='none' stroke='white' stroke-width='1.2'/></svg>">
+  <script src="https://unpkg.com/htmx.org@1.9.12" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <div class="masthead-inner">
+      <a class="wordmark" href="/">
+        <span class="dot" aria-hidden="true"></span>
+        SecureMailScope
+        <span class="sub">email security posture</span>
+      </a>
+      <nav>
+        <a href="/">Scan</a>
+        <a href="/history">History</a>
+        <a href="/docs">API</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="colophon">
+    <p>
+      <strong>Read-only assessment.</strong>
+      SecureMailScope performs public DNS lookups, fetches the domain's own published
+      MTA-STS policy, and opens an SMTP connection to the mail servers the domain
+      advertises in order to read their STARTTLS advertisement. It sends no test
+      messages, attempts no authentication, and accesses no mailbox contents.
+    </p>
+  </footer>
+</body>
+</html>

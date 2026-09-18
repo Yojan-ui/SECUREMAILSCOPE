@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+{% block content %}
+
+<section class="start">
+  <h1>Can your domain be used to send mail you did not send?</h1>
+  <p class="lede">
+    Enter a domain. SecureMailScope reads the SPF, DKIM, DMARC, MTA-STS and TLS-RPT
+    records it publishes, tests its mail servers for STARTTLS and TLS strength, and
+    returns a score with the evidence behind every finding.
+  </p>
+
+  {% if error %}
+  <div class="alert" role="alert">{{ error }}</div>
+  {% endif %}
+
+  <form class="scan-form" method="post" action="/scan">
+    <label class="sr-only" for="domain">Domain to assess</label>
+    <input id="domain" name="domain" type="text" placeholder="example.com"
+           autocomplete="off" autocapitalize="none" spellcheck="false" required autofocus>
+    <button type="submit">Run assessment</button>
+  </form>
+
+  <p class="form-note">
+    {% if llm_enabled %}
+      Findings come from the scanning engine. The AI layer explains them and is checked
+      against them before anything is shown.
+    {% else %}
+      No model key configured, so explanations come from the built-in rule-based writer.
+      Set <code>ANTHROPIC_API_KEY</code> to enable the AI layer.
+    {% endif %}
+  </p>
+</section>
+
+<section class="panels">
+  <div class="panel">
+    <h2>What gets checked</h2>
+    <dl class="checklist">
+      <dt>DMARC</dt>
+      <dd>Whether the policy actually enforces. <code>p=none</code> reports forgery and
+          delivers it anyway, which is the most common failure we find.</dd>
+
+      <dt>SPF</dt>
+      <dd>Record validity, the terminal <code>all</code> qualifier, and the 10-lookup
+          limit counted by resolving the real <code>include:</code> chain.</dd>
+
+      <dt>DKIM</dt>
+      <dd>Selector discovery across the major mail platforms, with each public key
+          decoded so the true key size is measured rather than guessed.</dd>
+
+      <dt>Transport</dt>
+      <dd>MX discovery, STARTTLS, which TLS versions each host will accept, cipher
+          suites, and certificate chain and expiry.</dd>
+
+      <dt>Policy</dt>
+      <dd>MTA-STS, including a fetch of the hosted policy file rather than trusting the
+          DNS record alone, plus TLS-RPT and BIMI.</dd>
+    </dl>
+  </div>
+
+  <div class="panel">
+    <h2>Recent assessments</h2>
+    {% if recent %}
+    <ul class="recent">
+      {% for scan in recent %}
+      <li>
+        <a href="/scan/{{ scan.scan_id }}">
+          <span class="rdomain">{{ scan.domain }}</span>
+          <span class="grade grade-{{ (scan.grade or 'N')[0]|lower }}">{{ scan.grade }}</span>
+          <span class="rscore">{{ scan.score if scan.score is not none and scan.score >= 0 else '—' }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ul>
+    {% if stats.total_scans %}
+    <p class="excluded">
+      {{ stats.total_scans }} scan{{ '' if stats.total_scans == 1 else 's' }},
+      {{ stats.unique_domains }} domain{{ '' if stats.unique_domains == 1 else 's' }}{% if stats.average_score %},
+      average {{ stats.average_score }}/100{% endif %}.
+    </p>
+    {% endif %}
+    {% else %}
+    <p class="empty">Nothing scanned yet.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}

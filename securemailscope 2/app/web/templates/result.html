@@ -1,0 +1,218 @@
+{% extends "base.html" %}
+{% block title %}{{ a.domain }} — SecureMailScope{% endblock %}
+
+{% set score = a.score.score if a.score else -1 %}
+{% set grade = a.score.grade if a.score else 'N/A' %}
+{% set gl = (grade[0]|lower) if grade else 'n' %}
+
+{% block content %}
+
+<section class="result-bar">
+  <div>
+    <h1>{{ a.domain }}</h1>
+    <p class="result-meta">
+      Scanned {{ a.started_at[:16]|replace('T', ' ') }} UTC ·
+      scan {{ a.scan_id }}
+      {% if cached %}· <span class="tag">from cache</span>{% endif %}
+    </p>
+  </div>
+  <div class="result-actions">
+    <a class="btn" href="/scan/{{ a.scan_id }}/report.pdf">Download PDF report</a>
+    <a class="btn btn-ghost" href="/">New scan</a>
+  </div>
+</section>
+
+<!-- The two questions a domain owner actually has. Everything below is evidence. -->
+<section class="verdicts">
+  {% for v in verdicts %}
+  <div class="verdict v-{{ v.tone }}">
+    <p class="q">{{ v.question }}</p>
+    <p class="a">{{ v.answer }}</p>
+    <p class="because">{{ v.because|ticks }}</p>
+  </div>
+  {% endfor %}
+
+  <div class="score-cell">
+    {% set pct = score if score >= 0 else 0 %}
+    {% set circ = 232.5 %}
+    <svg class="dial" viewBox="0 0 88 88" role="img"
+         aria-label="Posture score {{ score }} out of 100, grade {{ grade }}">
+      <circle class="dial-track" cx="44" cy="44" r="37" />
+      <circle class="dial-value dial-{{ gl }}" cx="44" cy="44" r="37"
+              stroke-dasharray="{{ circ }}"
+              stroke-dashoffset="{{ circ - (circ * pct / 100) }}" />
+      <text class="num" x="44" y="45" text-anchor="middle">{{ score if score >= 0 else '—' }}</text>
+    </svg>
+    <div class="score-side">
+      <p class="label">Score</p>
+      <span class="grade grade-{{ gl }}">{{ grade }}</span>
+      <p class="risk">{{ risk }}</p>
+    </div>
+  </div>
+</section>
+
+<div class="split">
+  <div>
+
+    {% if a.narrative %}
+    <section class="block">
+      <div class="block-head">
+        <h2>Risk narrative</h2>
+        <span class="source-chip">
+          {% if a.narrative.source.startswith('llm') %}AI · {{ a.narrative.model }}
+          {% else %}rule-based writer{% endif %}
+        </span>
+      </div>
+      <div class="block-body narrative">
+        {% for para in a.narrative.summary.split('\n\n') %}
+          {% if para.strip() %}<p>{{ para.strip()|ticks }}</p>{% endif %}
+        {% endfor %}
+
+        {% if a.narrative.attack_scenarios %}
+        <h3>What an attacker could do with this</h3>
+        <ul class="scenarios">
+          {% for item in a.narrative.attack_scenarios %}<li>{{ item|ticks }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="block">
+      <div class="block-head">
+        <h2>Findings</h2>
+        <span class="aside">
+          {{ grouped.issues|length }} to fix ·
+          {{ grouped.passing|length }} passing ·
+          {{ grouped.not_assessed|length }} not assessed
+        </span>
+      </div>
+
+      {% if grouped.issues %}
+        {% for f in grouped.issues %}
+        <article class="finding">
+          <div class="finding-head">
+            <span class="sev sev-{{ f.severity }}">{{ f.severity }}</span>
+            <h3>{{ f.title|ticks }}</h3>
+            <span class="finding-check">{{ f.check_name }}</span>
+          </div>
+          <p>{{ f.detail|ticks }}</p>
+          {% if f.remediation %}
+          <p class="fix"><b>Fix</b> &nbsp;{{ f.remediation|ticks }}</p>
+          {% endif %}
+          {% if f.evidence %}
+          <details>
+            <summary class="evidence-toggle">Evidence</summary>
+            <dl class="evidence">
+              {% for k, v in f.evidence.items() %}
+              <dt>{{ k }}</dt><dd>{{ v }}</dd>
+              {% endfor %}
+            </dl>
+          </details>
+          {% endif %}
+          {% if f.reference %}<p class="ref">{{ f.reference }}</p>{% endif %}
+        </article>
+        {% endfor %}
+      {% else %}
+        <div class="block-body">
+          <p class="clean">
+            Nothing to fix. Every check that returned a conclusive result passed.
+          </p>
+        </div>
+      {% endif %}
+    </section>
+
+    {% if grouped.passing %}
+    <section class="block">
+      <div class="block-head"><h2>Verified as correctly configured</h2></div>
+      <ul class="plain-list">
+        {% for f in grouped.passing %}
+        <li><span class="mark">✓</span><span><b>{{ f.title|ticks }}</b> — {{ f.detail|ticks }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+    {% if grouped.not_assessed %}
+    <section class="block">
+      <div class="block-head">
+        <h2>Not assessed</h2>
+        <span class="aside">excluded from the score, counted neither as passing nor failing</span>
+      </div>
+      <ul class="plain-list dim">
+        {% for f in grouped.not_assessed %}
+        <li><span class="mark">–</span><span><b>{{ f.title|ticks }}</b> — {{ f.detail|ticks }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+    {% endif %}
+
+  </div>
+
+  <aside class="side">
+    <section class="block">
+      <div class="block-head"><h2>Score breakdown</h2></div>
+      <div class="block-body">
+        {% if a.score and a.score.category_scores %}
+          {% for name, bucket in a.score.category_scores.items() %}
+          {% set band = 'good' if bucket.percent >= 85 else ('fair' if bucket.percent >= 60 else ('poor' if bucket.percent >= 35 else 'bad')) %}
+          <div class="meter-row">
+            <div class="meter-label">
+              <span>{{ name }}</span>
+              <span>{{ bucket.earned }}/{{ bucket.max }}</span>
+            </div>
+            <div class="meter"><i class="m-{{ band }}" style="width: {{ bucket.percent }}%"></i></div>
+          </div>
+          {% endfor %}
+        {% else %}
+          <p class="empty">No category returned a conclusive result.</p>
+        {% endif %}
+
+        {% set excluded = a.score.deductions|selectattr('excluded')|list if a.score else [] %}
+        {% if excluded %}
+        <p class="excluded">
+          Excluded because the check could not complete:
+          {% for d in excluded %}<code>{{ d.check }}</code>{% if not loop.last %}, {% endif %}{% endfor %}.
+          A check we could not run never counts against the domain.
+        </p>
+        {% endif %}
+      </div>
+    </section>
+
+    {% if history|length > 1 %}
+    <section class="block">
+      <div class="block-head"><h2>Earlier scans</h2></div>
+      <div class="block-body">
+        <div class="history-chips">
+          {% for h in history %}
+          <a href="/scan/{{ h.scan_id }}">
+            <span class="when">{{ h.started_at[:16]|replace('T', ' ') }}</span>
+            <span class="grade grade-{{ (h.grade or 'N')[0]|lower }}">{{ h.grade }}</span>
+          </a>
+          {% endfor %}
+        </div>
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="block">
+      <div class="block-head"><h2>Method</h2></div>
+      <div class="block-body scope-note">
+        <p>
+          <b>Passive throughout.</b> Public DNS lookups, one HTTPS GET of this domain's own
+          MTA-STS policy, and SMTP connections to the hosts it advertises in MX.
+        </p>
+        <p>
+          No test messages were sent, no authentication was attempted, no mail was relayed
+          and no mailbox was accessed. Connections closed with QUIT.
+        </p>
+        <p>
+          Each check owns a weighted share of 100 points. Every deduction above is itemised
+          in the PDF report.
+        </p>
+      </div>
+    </section>
+  </aside>
+</div>
+
+{% endblock %}

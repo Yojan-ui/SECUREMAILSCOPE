@@ -1,0 +1,66 @@
+SecureMailScope
+===============
+
+
+IF YOU JUST WANT TO SEE IT
+--------------------------
+
+Open the folder called  preview  and double-click  index.html
+
+That opens in any browser with nothing installed. Every page in there is the
+real interface, rendered from real scan output, including the PDF reports.
+It cannot scan a new domain, because scanning needs the engine running.
+
+
+IF YOU WANT TO SCAN A REAL DOMAIN
+---------------------------------
+
+Windows      double-click  run.bat
+macOS/Linux  open a terminal in this folder and run:   ./run.sh
+
+                 (if it says permission denied, first run:  chmod +x run.sh)
+
+The first run takes about a minute: it builds a local environment inside this
+folder and installs what it needs. Nothing is installed system-wide. After
+that it starts in a couple of seconds and opens your browser automatically.
+
+Then type a domain and press "Run assessment". Try your college domain, or
+any domain you like. It only reads public records.
+
+Press Ctrl+C in the terminal (or close the window) to stop it.
+
+
+IF SOMETHING GOES WRONG
+-----------------------
+
+"Python was not found"
+    Install Python 3.10 or newer from https://www.python.org/downloads/
+    On Windows, tick "Add Python to PATH" during the install.
+
+The scan finishes but transport says "not assessed"
+    Your network blocks outbound port 25. Most home and campus networks do,
+    and so does almost every cloud host. The DNS checks (SPF, DKIM, DMARC,
+    MTA-STS, TLS-RPT) still work and are the bulk of the score. This is
+    expected, and the tool says so rather than marking the domain down.
+
+Every check says "could not be retrieved"
+    Your network is blocking DNS on port 53. Run it with a different
+    resolver:   python cli.py yourdomain.com --resolver doh
+
+Nothing opens in the browser
+    Go to http://127.0.0.1:8000 yourself. If the port was busy, run.sh picks
+    the next free one and prints the address in the terminal.
+
+
+ALSO IN HERE
+------------
+
+cli.py       the same engine from the command line, for CI or scripting:
+                 python cli.py example.com
+                 python cli.py example.com --pdf report.pdf
+                 python cli.py example.com --json
+
+tests/       59 tests that run offline against recorded DNS fixtures:
+                 python -m pytest -q
+
+README.md    how the scoring works and what each check does.

@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Scanning {{ job.domain }} — SecureMailScope{% endblock %}
+{% block content %}
+<section class="scanning">
+  <h1>Assessing <span class="target">{{ job.domain }}</span></h1>
+  <div id="progress"
+       hx-get="/progress/{{ job.job_id }}/fragment"
+       hx-trigger="load, every 900ms"
+       hx-swap="innerHTML">
+    {% include "_progress_fragment.html" %}
+  </div>
+</section>
+{% endblock %}

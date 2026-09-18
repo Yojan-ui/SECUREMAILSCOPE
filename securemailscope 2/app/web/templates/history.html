@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Scan history — SecureMailScope{% endblock %}
+{% block content %}
+
+<section class="page-head">
+  <h1>Scan history</h1>
+  {% if stats.total_scans %}
+  <p>
+    {{ stats.total_scans }} assessment{{ '' if stats.total_scans == 1 else 's' }} across
+    {{ stats.unique_domains }} domain{{ '' if stats.unique_domains == 1 else 's' }}{% if stats.average_score %},
+    averaging {{ stats.average_score }}/100{% endif %}.
+  </p>
+  {% endif %}
+</section>
+
+<section class="block">
+  <div class="block-body">
+    {% if scans %}
+    <table class="records">
+      <thead>
+        <tr>
+          <th>Domain</th><th>Score</th><th>Grade</th><th>Scanned</th>
+          <th>Narrative</th><th>Report</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in scans %}
+        <tr>
+          <td><a href="/scan/{{ s.scan_id }}">{{ s.domain }}</a></td>
+          <td class="num">{{ s.score if s.score is not none and s.score >= 0 else '—' }}</td>
+          <td><span class="grade grade-{{ (s.grade or 'N')[0]|lower }}">{{ s.grade }}</span></td>
+          <td class="quiet">{{ s.started_at[:16]|replace('T', ' ') }}</td>
+          <td class="quiet">
+            {{ 'AI' if s.narrative_source and s.narrative_source.startswith('llm') else 'rule-based' }}
+          </td>
+          <td><a href="/scan/{{ s.scan_id }}/report.pdf">PDF</a></td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+    {% else %}
+    <p class="empty">No scans recorded yet.</p>
+    {% endif %}
+  </div>
+</section>
+
+{% endblock %}
